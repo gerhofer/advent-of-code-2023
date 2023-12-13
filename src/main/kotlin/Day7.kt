@@ -44,6 +44,7 @@ object Day7 {
                     Type.FULL_HOUSE
                 } else {
                     Type.THREE_OF_A_KIND
+
                 }
             } else if (cardToAmount.values.contains(2) || cardToAmount.any { it.value + numberOfJokers == 2 }) {
                 if (cardToAmount.values.count { it == 2 } == 2) {
