@@ -1,11 +1,9 @@
 fun main(args: Array<String>) {
-    // 6827 println("Part 1: ${Day12.solvePart1()}")
-    println("Part 2: ${Day12.solvePart1Two()}")
+    //println("Part 1: ${Day12.solvePart1()}") // 6827
+    println("Part 2: ${Day12.solvePart2()}")
 }
 
 object Day12 {
-    val generatedOptions: MutableMap<Long, List<String>> = mutableMapOf<Long, List<String>>()
-
     fun solvePart1(): Int {
         val input = Day12::class.java.getResource("day12.txt")?.readText() ?: error("Can't read input")
         val conditions = input.split("\r\n")
@@ -31,42 +29,65 @@ object Day12 {
         return generateOptions(options)
     }
 
-    fun solvePart1Two(): Int {
-        val input = Day12::class.java.getResource("day12.txt")?.readText() ?: error("Can't read input")
-        val conditions = input.split("\r\n")
-            .map { line -> SpringCondition.parse(line) }
-        generateOptions(conditions)
-
-        return conditions.sumOf { condition ->
-            val options = generatedOptions[condition.pattern.length.toLong()]
-                ?: error("No options found generated for length ${condition.pattern.length}")
-            val count = options.count { it.matches(condition.patternRegex) && it.matches(condition.regex) }
-            println(count)
-            count
-        }
-    }
-
-    private fun generateOptions(conditions: List<SpringCondition>) {
-        val maxSize = conditions.maxOf { it.pattern.length }
-        for (i in 1L..maxSize) {
-            val options = generatedOptions.getOrDefault(i - 1, listOf(""))
-            generatedOptions[i] = options.map { it + "." } + options.map { it + "#" }
-        }
-    }
-
     fun solvePart2(): Int {
         val input = Day12::class.java.getResource("day12.txt")?.readText() ?: error("Can't read input")
         val conditions = input.split("\r\n")
-            .map { line -> SpringCondition.parse(line) }
-        val maxSize = conditions.maxBy { it.pattern.length }
-
-        conditions.map { springCondition ->
-            val patternRegex = springCondition.patternRegex
-            val regex = springCondition.regex
-        }
+            .map { line -> SpringCondition.parseComplex(line) }
+            .mapIndexed { idx, springCondition ->
+                val options = generateOptions2(listOf(Option(springCondition.pattern, 1)), springCondition)
+                println("finished option generation for $idx")
+                options.filter { it.option.matches(springCondition.regex) }
+            }
             .toMutableList()
-        return 1
+        return conditions.sumOf { it.sumOf { a -> a.count } }
     }
+
+    fun generateOptions2(startingPatterns: List<Option>, condition: SpringCondition): List<Option> {
+        if (startingPatterns.none { it.option.contains("?") }) {
+            return startingPatterns
+        }
+        val options = mutableListOf<Option>()
+        for (option in startingPatterns.filter { it.option.contains("?") }) {
+            val pattern = option.option
+            if (pattern.matches(condition.possibleRegex)) {
+                val option1 = pattern.replaceFirst("?", ".")
+                val option2 = pattern.replaceFirst("?", "#")
+                options.addAll(listOf(Option(option1, option.count), Option(option2, option.count)))
+            }
+        }
+        val mergedOptions = mergeOptions(options)
+        return generateOptions2(mergedOptions, condition)
+    }
+
+    fun mergeOptions(options: List<Option>): List<Option> {
+        val grouped = options.groupBy { toGroups(it.option.substringBefore("?")) }
+        return grouped.map { Option(it.value.first().option, it.value.sumOf { x -> x.count }) }
+    }
+
+    fun toGroups(pattern: String): Group {
+        val patterns = mutableListOf<Int>()
+        var currentGroup = 0
+        for (letter in pattern) {
+            if (letter == '.' && currentGroup > 0) {
+                patterns.add(currentGroup)
+                currentGroup = 0
+            }
+            if (letter == '#') {
+                currentGroup++
+            }
+        }
+        return Group(patterns, currentGroup)
+    }
+
+    data class Group(
+        val finishedOptions: List<Int>,
+        val openOption: Int,
+    )
+
+    data class Option(
+        val option: String,
+        val count: Int
+    )
 
     data class SpringCondition(
         val pattern: String,
@@ -79,6 +100,8 @@ object Day12 {
             )
 
         val regex: Regex get() = Regex("\\.*" + constraints.joinToString("\\.+") { "#{${it}}" } + "\\.*")
+        val possibleRegex: Regex get() = Regex("[\\., \\?]*" + constraints.joinToString("[\\., \\?]+") { "[#, \\?]{${it}}" } + "[\\., \\?]*")
+
 
         companion object {
             fun parse(line: String): SpringCondition {
@@ -87,7 +110,19 @@ object Day12 {
                     line.substringAfter(" ").split(",").map { it.toInt() }
                 )
             }
+
+            fun parseComplex(line: String): SpringCondition {
+                val originalPattern = line.substringBefore(" ")
+                var finalPattern = originalPattern
+                repeat(4) { finalPattern += "?$originalPattern" }
+                val originalConditions = line.substringAfter(" ").split(",").map { it.toInt() }
+                var finalConditions = originalConditions.toMutableList()
+                repeat(4) { finalConditions.addAll(originalConditions) }
+                return SpringCondition(
+                    finalPattern,
+                    finalConditions.toList()
+                )
+            }
         }
     }
-
 }

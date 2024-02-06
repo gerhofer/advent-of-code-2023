@@ -109,22 +109,49 @@ object Day10 {
         val startY = map.indexOfFirst { it.contains("S") }
         val startX = map[startY].indexOf("S")
         val path = findPath(map, Coordinate(startX, startY))
-        printPath(path, map.first().size, map.size)
-        return 0
+        //printPath(map, path, map.first().size, map.size)
+        return count(map, path)
     }
 
-    private fun printPath(path: List<Coordinate>, width: Int, height: Int) {
+    private fun printPath(map: List<List<String>>, path: List<Coordinate>, width: Int, height: Int) {
         for (i in 0 .. height) {
             for (j in 0 .. width) {
                 if (path.contains(Coordinate(j , i))) {
-                    print("X")
+                    print(map[i][j])
                 } else {
                     print(".")
                 }
             }
             println()
         }
+    }
 
+    private fun count(map: List<List<String>>, path: List<Coordinate>): Long {
+        var includedFieldsCount = 0L
+        for (i in 0 .. map.size-1) {
+            var inside = false
+            for (j in 0 .. map.first().size - 1) {
+                if (path.contains(Coordinate(j , i))) {
+                    val pathValue = map[i][j]
+                    if (inside) {
+                        if (pathValue == "|" || pathValue == "7" || pathValue == "J") {
+                            inside = false
+                        }
+                    } else {
+                        if (pathValue == "S" || pathValue == "L" || pathValue == "|" || pathValue == "F") {
+                            inside = true
+                        }
+                    }
+
+                } else {
+                    if (inside) {
+                        println("row $i / col $j")
+                        includedFieldsCount++
+                    }
+                }
+            }
+        }
+        return includedFieldsCount
     }
 
     enum class Movement {
